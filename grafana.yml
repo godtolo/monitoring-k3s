@@ -1,0 +1,138 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana-1712442147
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: grafana
+      app.kubernetes.io/instance: grafana-1712442147
+      app.kubernetes.io/name: grafana
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app.kubernetes.io/component: grafana
+        app.kubernetes.io/instance: grafana-1712442147
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/name: grafana
+        app.kubernetes.io/version: 10.4.1
+        helm.sh/chart: grafana-10.0.6
+      annotations:
+        checksum/config: 95bd1b14a102f8da34a85d9fd8f78a65bbbcf7d6febad17cb4f9781afb28ab1f
+        checksum/dashboard-provider: 01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b
+        checksum/secret: 6d26b7ff9f3e23ae51deae5750bb72c1dba1010b1e6d70fb0c89321b691d116c
+        linkerd.io/inject: enabled
+    spec:
+      volumes:
+      - name: empty-dir
+        emptyDir: {}
+      - name: data
+        persistentVolumeClaim:
+          claimName: grafana-1712442147
+      containers:
+      - name: grafana
+        image: docker.io/bitnami/grafana:10.4.1-debian-12-r4
+        ports:
+        - name: dashboard
+          containerPort: 3000
+          protocol: TCP
+        envFrom:
+        - configMapRef:
+            name: grafana-1712442147-envvars
+        env:
+        - name: GF_SECURITY_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: grafana-1712442147-admin
+              key: GF_SECURITY_ADMIN_PASSWORD
+        resources:
+          limits:
+            cpu: 150m
+            ephemeral-storage: 1Gi
+            memory: 192Mi
+          requests:
+            cpu: 100m
+            ephemeral-storage: 50Mi
+            memory: 128Mi
+        volumeMounts:
+        - name: empty-dir
+          mountPath: /tmp
+          subPath: tmp-dir
+        - name: empty-dir
+          mountPath: /opt/bitnami/grafana/conf
+          subPath: app-conf-dir
+        - name: empty-dir
+          mountPath: /opt/bitnami/grafana/tmp
+          subPath: app-tmp-dir
+        - name: empty-dir
+          mountPath: /bitnami/grafana
+          subPath: app-volume-dir
+        - name: data
+          mountPath: /opt/bitnami/grafana/data
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: dashboard
+            scheme: HTTP
+          initialDelaySeconds: 120
+          timeoutSeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          failureThreshold: 6
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: dashboard
+            scheme: HTTP
+          initialDelaySeconds: 30
+          timeoutSeconds: 5
+          periodSeconds: 10
+          successThreshold: 1
+          failureThreshold: 6
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          capabilities:
+            drop:
+            - ALL
+          privileged: false
+          seLinuxOptions: {}
+          runAsUser: 1001
+          runAsGroup: 1001
+          runAsNonRoot: true
+          readOnlyRootFilesystem: true
+          allowPrivilegeEscalation: false
+          seccompProfile:
+            type: RuntimeDefault
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+      serviceAccountName: grafana-1712442147
+      serviceAccount: grafana-1712442147
+      automountServiceAccountToken: false
+      securityContext:
+        fsGroup: 1001
+        fsGroupChangePolicy: Always
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 1
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/component: grafana
+                  app.kubernetes.io/instance: grafana-1712442147
+                  app.kubernetes.io/name: grafana
+              topologyKey: kubernetes.io/hostname
+      schedulerName: default-scheduler
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 25%
+      maxSurge: 25%
+  revisionHistoryLimit: 10
+  progressDeadlineSeconds: 600
